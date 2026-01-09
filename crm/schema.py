@@ -4,42 +4,64 @@ import graphene
 from decimal import Decimal
 from django.db import transaction
 from django.core.exceptions import ValidationError
+from graphene import relay
 from graphene_django import DjangoObjectType
+from graphene_django.filter import DjangoFilterConnectionField
 
 from .models import Customer, Product, Order
+from .filters import CustomerFilter, ProductFilter, OrderFilter
 
+
+# =====================
 # GraphQL Types
+# =====================
+
 class CustomerType(DjangoObjectType):
     class Meta:
         model = Customer
+        interfaces = (relay.Node,)
         fields = "__all__"
+
 
 class ProductType(DjangoObjectType):
     class Meta:
         model = Product
+        interfaces = (relay.Node,)
         fields = "__all__"
+
 
 class OrderType(DjangoObjectType):
     class Meta:
         model = Order
+        interfaces = (relay.Node,)
         fields = "__all__"
 
-# Queries
+
+# =====================
+# Queries (Relay + Filters)
+# =====================
+
 class Query(graphene.ObjectType):
-    customers = graphene.List(CustomerType)
-    products = graphene.List(ProductType)
-    orders = graphene.List(OrderType)
+    all_customers = DjangoFilterConnectionField(
+        CustomerType,
+        filterset_class=CustomerFilter
+    )
 
-    def resolve_customers(root, info):
-        return Customer.objects.all()
+    all_products = DjangoFilterConnectionField(
+        ProductType,
+        filterset_class=ProductFilter
+    )
 
-    def resolve_products(root, info):
-        return Product.objects.all()
+    all_orders = DjangoFilterConnectionField(
+        OrderType,
+        filterset_class=OrderFilter
+    )
 
-    def resolve_orders(root, info):
-        return Order.objects.all()
 
+# =====================
 # Mutations
+# =====================
+
 class CreateCustomer(graphene.Mutation):
     customer = graphene.Field(CustomerType)
     message = graphene.String()
@@ -47,7 +69,7 @@ class CreateCustomer(graphene.Mutation):
     class Arguments:
         name = graphene.String(required=True)
         email = graphene.String(required=True)
-        phone = graphene.String(required=False)
+        phone = graphene.String()
 
     def mutate(self, info, name, email, phone=None):
         if Customer.objects.filter(email=email).exists():
@@ -69,10 +91,14 @@ class CreateCustomer(graphene.Mutation):
             message="Customer created successfully"
         )
 
+
+# ---------- Bulk Create Customers ----------
+
 class CustomerInput(graphene.InputObjectType):
     name = graphene.String(required=True)
     email = graphene.String(required=True)
-    phone = graphene.String(required=False)
+    phone = graphene.String()
+
 
 class BulkCreateCustomers(graphene.Mutation):
     customers = graphene.List(CustomerType)
@@ -104,10 +130,12 @@ class BulkCreateCustomers(graphene.Mutation):
                     created.append(customer)
 
             except Exception as e:
-                errors.append(f"Record {idx + 1}: {str(e)}")
+                errors.append(f"Record {idx + 1}: {e}")
 
         return BulkCreateCustomers(customers=created, errors=errors)
 
+
+# ---------- Create Product ----------
 
 class CreateProduct(graphene.Mutation):
     product = graphene.Field(ProductType)
@@ -115,7 +143,7 @@ class CreateProduct(graphene.Mutation):
     class Arguments:
         name = graphene.String(required=True)
         price = graphene.Decimal(required=True)
-        stock = graphene.Int(required=False)
+        stock = graphene.Int()
 
     def mutate(self, info, name, price, stock=0):
         if price <= 0:
@@ -133,6 +161,8 @@ class CreateProduct(graphene.Mutation):
         return CreateProduct(product=product)
 
 
+# ---------- Create Order ----------
+
 class CreateOrder(graphene.Mutation):
     order = graphene.Field(OrderType)
 
@@ -145,14 +175,23 @@ class CreateOrder(graphene.Mutation):
             raise ValidationError("At least one product must be selected")
 
         try:
-            customer = Customer.objects.get(pk=customer_id)
-        except Customer.DoesNotExist:
+            customer = relay.Node.get_node_from_global_id(
+                info, customer_id, only_type=CustomerType
+            )
+        except Exception:
+            customer = None
+
+        if not customer:
             raise ValidationError("Invalid customer ID")
 
-        products = Product.objects.filter(id__in=product_ids)
-
-        if products.count() != len(product_ids):
-            raise ValidationError("One or more invalid product IDs")
+        products = []
+        for pid in product_ids:
+            product = relay.Node.get_node_from_global_id(
+                info, pid, only_type=ProductType
+            )
+            if not product:
+                raise ValidationError("Invalid product ID")
+            products.append(product)
 
         total = sum((p.price for p in products), Decimal("0.00"))
 
@@ -164,6 +203,11 @@ class CreateOrder(graphene.Mutation):
             order.products.set(products)
 
         return CreateOrder(order=order)
+
+
+# =====================
+# Root Mutation
+# =====================
 
 class Mutation(graphene.ObjectType):
     create_customer = CreateCustomer.Field()
