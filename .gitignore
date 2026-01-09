@@ -1,0 +1,54 @@
+
+# Logs / runtime
+logs/
+*.log
+pids/
+*.pid
+*.seed
+tmp/
+temp/
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.sublime-workspace
+*.swp
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# GraphQL / codegen / generated artifacts
+src/generated/
+generated/
+graphql.schema.json
+schema.graphql
+*.graphql.ts
+*.gql.ts
+
+# Database / ORM
+*.sqlite
+*.db
+*.sqlite3
+.prisma/dev.db
+prisma/.env
+
+# Test artifacts
+coverage/
+coverage/lcov-report/
+
+# Misc
+*.tgz
+*.log.gz
+.idea/
+
+# Env files
+.env
+.env.local
+
+# virtual environments
