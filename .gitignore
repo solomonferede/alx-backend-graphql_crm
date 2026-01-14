@@ -73,6 +73,3 @@ db.sqlite3
 **/*.pyc
 **/*.pyo
 **/*.pyd
-
-# Cron jobs / specific project untracked folders
-crm/cron_jobs/
