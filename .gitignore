@@ -61,3 +61,18 @@ __pycache__/
 *.pyo
 *.pyd
 *.pytest_cache/ 
+
+# Database / ORM
+*.sqlite3
+*.sqlite
+*.db
+db.sqlite3
+
+# Python cache (Updated for nested directories)
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Cron jobs / specific project untracked folders
+crm/cron_jobs/
