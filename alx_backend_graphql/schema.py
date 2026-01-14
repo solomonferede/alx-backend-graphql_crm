@@ -3,18 +3,12 @@ from graphene_django import DjangoObjectType
 from crm.models import Product
 
 
-# --------------------------------------------------
-# Product Type
-# --------------------------------------------------
 class ProductType(DjangoObjectType):
     class Meta:
         model = Product
         fields = ("id", "name", "stock")
 
 
-# --------------------------------------------------
-# Mutation: UpdateLowStockProducts
-# --------------------------------------------------
 class UpdateLowStockProducts(graphene.Mutation):
     success = graphene.String()
     products = graphene.List(ProductType)
@@ -34,16 +28,10 @@ class UpdateLowStockProducts(graphene.Mutation):
         )
 
 
-# --------------------------------------------------
-# Root Query (can be empty if already defined elsewhere)
-# --------------------------------------------------
 class Query(graphene.ObjectType):
     pass
 
 
-# --------------------------------------------------
-# Root Mutation
-# --------------------------------------------------
 class Mutation(graphene.ObjectType):
     update_low_stock_products = UpdateLowStockProducts.Field()
 
